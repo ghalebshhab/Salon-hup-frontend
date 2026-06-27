@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   CalendarCheck,
   ChevronDown,
@@ -13,26 +13,39 @@ import {
   Image,
   Building2,
   BriefcaseBusiness,
+  Bell,
+  User,
 } from "lucide-react";
 
 import { clearAuthData, isLoggedIn } from "../../utils/tokenStorage";
 
 function Navbar() {
   const navigate = useNavigate();
-  const loggedIn = isLoggedIn();
+  const location = useLocation();
+
+  // ✅ Reactive auth state — re-checks on every route change
+  const [loggedIn, setLoggedIn] = useState(isLoggedIn());
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [ownerMenuOpen, setOwnerMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+
+  // ✅ Re-evaluate login state whenever the route changes
+  useEffect(() => {
+    setLoggedIn(isLoggedIn());
+  }, [location.pathname]);
 
   const logout = () => {
     clearAuthData();
-    setMobileOpen(false);
+    setLoggedIn(false); // ✅ Immediately update UI without waiting for route change
+    closeMenus();
     navigate("/login");
   };
 
   const closeMenus = () => {
     setMobileOpen(false);
     setOwnerMenuOpen(false);
+    setProfileMenuOpen(false);
   };
 
   return (
@@ -42,7 +55,6 @@ function Navbar() {
           <span className="brand-icon">
             <Scissors size={20} />
           </span>
-
           <span className="brand-text">
             Salon<span>Hub</span>
           </span>
@@ -50,6 +62,7 @@ function Navbar() {
 
         <nav className={mobileOpen ? "creative-nav open" : "creative-nav"}>
           <div className="main-nav-links">
+            {/* ✅ These links are always visible — public browsing allowed */}
             <NavLink to="/" className="creative-nav-link" onClick={closeMenus}>
               Home
             </NavLink>
@@ -62,6 +75,7 @@ function Navbar() {
               Hiring Posts
             </NavLink>
 
+            {/* ✅ My Bookings only visible when logged in */}
             {loggedIn && (
               <NavLink
                 to="/my-bookings"
@@ -73,6 +87,7 @@ function Navbar() {
             )}
           </div>
 
+          {/* ✅ Owner Area only visible when logged in */}
           {loggedIn && (
             <div className="owner-dropdown">
               <button
@@ -90,7 +105,9 @@ function Navbar() {
 
               <div
                 className={
-                  ownerMenuOpen ? "owner-dropdown-menu show" : "owner-dropdown-menu"
+                  ownerMenuOpen
+                    ? "owner-dropdown-menu show"
+                    : "owner-dropdown-menu"
                 }
               >
                 <NavLink
@@ -137,14 +154,15 @@ function Navbar() {
                   <CalendarCheck size={17} />
                   Salon Bookings
                 </NavLink>
+
                 <NavLink
-  to="/employee/bookings"
-  className="dropdown-item"
-  onClick={closeMenus}
->
-  <CalendarCheck size={17} />
-  My Employee Bookings
-</NavLink>
+                  to="/employee/bookings"
+                  className="dropdown-item"
+                  onClick={closeMenus}
+                >
+                  <CalendarCheck size={17} />
+                  My Employee Bookings
+                </NavLink>
 
                 <NavLink
                   to="/owner/create-media-post"
@@ -167,13 +185,69 @@ function Navbar() {
             </div>
           )}
 
+          {/* ✅ Auth area: shows Login+Signup when logged out, Bell+Profile when logged in */}
           <div className="navbar-auth-area">
             {loggedIn ? (
-              <button className="navbar-logout-button" onClick={logout}>
-                <LogOut size={17} />
-                Logout
-              </button>
+              // ── LOGGED IN: show notification bell + profile dropdown ──
+              <div
+                className="logged-in-actions"
+                style={{ display: "flex", alignItems: "center", gap: "15px" }}
+              >
+                <button
+                  className="notification-button"
+                  type="button"
+                  aria-label="Notifications"
+                >
+                  <Bell size={20} />
+                </button>
+
+                <div className="owner-dropdown">
+                  <button
+                    className="owner-dropdown-button"
+                    type="button"
+                    onClick={() => setProfileMenuOpen((prev) => !prev)}
+                  >
+                    <User size={20} />
+                    <ChevronDown
+                      size={16}
+                      className={profileMenuOpen ? "chevron rotate" : "chevron"}
+                    />
+                  </button>
+
+                  <div
+                    className={
+                      profileMenuOpen
+                        ? "owner-dropdown-menu show"
+                        : "owner-dropdown-menu"
+                    }
+                  >
+                    <div
+                      className="dropdown-item"
+                      style={{
+                        borderBottom: "1px solid #eee",
+                        pointerEvents: "none",
+                      }}
+                    >
+                      <strong>My Profile</strong>
+                    </div>
+
+                    <button
+                      className="dropdown-item"
+                      onClick={logout}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        color: "#ef4444",
+                      }}
+                    >
+                      <LogOut size={17} />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
             ) : (
+              // ── LOGGED OUT: show Login + Signup ──
               <>
                 <NavLink
                   to="/login"
@@ -189,7 +263,7 @@ function Navbar() {
                   className="navbar-register-button"
                   onClick={closeMenus}
                 >
-                  Register
+                  Signup
                 </NavLink>
               </>
             )}
